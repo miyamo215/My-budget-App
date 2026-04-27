@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>家族収支管理</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: sans-serif; background: #f0f4f8; }
+.header { background: #2d6a4f; color: white; padding: 15px; text-align: center; font-size: 20px; }
+.container { max-width: 480px; margin: 20px auto; padding: 10px; }
+.card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; margin-bottom: 12px; }
+.btn { width: 100%; padding: 14px; background: #2d6a4f; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; }
+.btn:active { background: #1b4332; }
+.type-btn { display: flex; gap: 10px; margin-bottom: 12px; }
+.type-btn button { flex: 1; padding: 10px; border: 2px solid #ddd; border-radius: 8px; background: white; font-size: 15px; cursor: pointer; }
+.type-btn button.active-out { border-color: #e63946; background: #ffe0e0; }
+.type-btn button.active-in { border-color: #2d6a4f; background: #d8f3dc; }
+#msg { text-align: center; padding: 10px; border-radius: 8px; margin-top: 10px; display: none; }
+</style>
+</head>
+<body>
+<div class="header">💰 家族収支管理</div>
+<div class="container">
+  <div class="card">
+    <label>種別</label>
+    <div class="type-btn">
+      <button id="btnOut" onclick="setType('出金')" class="active-out">💸 支出</button>
+      <button id="btnIn" onclick="setType('入金')">💰 収入</button>
+    </div>
+    <label>金額（円）</label>
+    <input type="number" id="amount" placeholder="例：1500">
+    <label>カテゴリ</label>
+    <select id="category">
+      <option>食費</option>
+      <option>日用品</option>
+      <option>交通費</option>
+      <option>医療費</option>
+      <option>教育費</option>
+      <option>娯楽</option>
+      <option>光熱費</option>
+      <option>その他</option>
+    </select>
+    <label>お店・メモ</label>
+    <input type="text" id="shop" placeholder="例：イオン">
+    <label>写真（レシートなど）</label>
+    <input type="file" id="photo" accept="image/*" multiple>
+    <button class="btn" onclick="submit()">📤 送信する</button>
+    <div id="msg"></div>
+  </div>
+</div>
+<script>
+const GAS_URL = "https://script.google.com/macros/s/AKfycbz3pC31qRpurwYSVOSa3jP4GBWpyTTfavF7wKzfwfVFLe5O-TjaNS2RoiEdV0FqFDrW/exec";
+let selectedType = "出金";
+
+function setType(type) {
+  selectedType = type;
+  document.getElementById("btnOut").className = type === "出金" ? "active-out" : "";
+  document.getElementById("btnIn").className = type === "入金" ? "active-in" : "";
+}
+
+async function toBase64(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.readAsDataURL(file);
+  });
+}
+
+async function submit() {
+  const amount = document.getElementById("amount").value;
+  if (!amount) { alert("金額を入力してください"); return; }
+  const files = document.getElementById("photo").files;
+  let imageBlobs = [];
+  for (let f of files) { imageBlobs.push(await toBase64(f)); }
+  const data = {
+    action: "upload",
+    data: {
+      date: new Date().toLocaleDateString("ja-JP"),
+      amount: Number(amount),
+      category: document.getElementById("category").value,
+      shop: document.getElementById("shop").value,
+      imageBlobs,
+      type: selectedType,
+      lineId: "web-user",
+      hold: false
+    }
+  };
+  const msg = document.getElementById("msg");
+  msg.style.display = "block";
+  msg.style.background = "#fff9c4";
+  msg.textContent = "送信中...";
+  try {
+    await fetch(GAS_URL, { method: "POST", body: JSON.stringify(data) });
+    msg.style.background = "#d8f3dc";
+    msg.textContent = "✅ 送信しました！";
+    document.getElementById("amount").value = "";
+    document.getElementById("shop").value = "";
+    document.getElementById("photo").value = "";
+  } catch(e) {
+    msg.style.background = "#ffe0e0";
+    msg.textContent = "❌ エラーが発生しました";
+  }
+}
+</script>
+</body>
+</html>
